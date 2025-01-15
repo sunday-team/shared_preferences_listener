@@ -1,0 +1,90 @@
+# This file configures the Dart analyzer and linter for the project.
+# It includes rules for code quality and style, ensuring best practices are followed.
+# Additionally, it enforces documentation requirements for all public members in the lib directory.
+
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Enforce return types for all functions
+    - always_declare_return_types
+    # Annotate overrides for clarity
+    - annotate_overrides
+    # Avoid using empty else statements
+    - avoid_empty_else
+    # Discourage the use of print statements in production code
+    - avoid_print
+    # Prevent relative imports from the lib directory
+    - avoid_relative_lib_imports
+    # Avoid using types as parameter names
+    - avoid_types_as_parameter_names
+    # Use camel case for type names
+    - camel_case_types
+    # Use constant identifiers for constant values
+    - constant_identifier_names
+    # Control flow should not be used in finally blocks
+    - control_flow_in_finally
+    # Avoid empty catch blocks
+    - empty_catches
+    # Avoid empty constructor bodies
+    - empty_constructor_bodies
+    # Use meaningful library names
+    - library_names
+    # Avoid using library prefixes
+    - library_prefixes
+    # Ensure no duplicate case values in switch statements
+    - no_duplicate_case_values
+    # Prevent null closures
+    - null_closures
+    # Prefer using collection literals
+    - prefer_collection_literals
+    # Prefer conditional assignment over if-else
+    - prefer_conditional_assignment
+    # Prefer using contains method for collections
+    - prefer_contains
+    # Prefer final fields for immutability
+    - prefer_final_fields
+    # Prefer checking if collections are empty
+    - prefer_is_empty
+    # Prefer checking if collections are not empty
+    - prefer_is_not_empty
+    # Use single quotes for strings
+    - prefer_single_quotes
+    # Use slashes for documentation comments
+    - slash_for_doc_comments
+    # Enforce type initialization in formals
+    - type_init_formals
+    # Avoid unawaited futures
+    - unawaited_futures
+    # Avoid unnecessary const constructors
+    - unnecessary_const
+    # Avoid unnecessary new keyword
+    - unnecessary_new
+    # Avoid unnecessary null checks in if-null operators
+    - unnecessary_null_in_if_null_operators
+    # Avoid unnecessary 'this' references
+    - unnecessary_this
+    # Avoid unrelated type equality checks
+    - unrelated_type_equality_checks
+    # Use rethrow when possible for exceptions
+    - use_rethrow_when_possible
+    # Ensure valid regular expressions
+    - valid_regexps
+    # Require documentation for public members in the lib directory
+    - public_member_api_docs
+
+analyzer:
+  language:
+    # Enable strict casting rules
+    strict-casts: true
+    # Disable strict inference
+    strict-inference: false
+    # Enable strict raw types
+    strict-raw-types: true
+  exclude:
+    # Exclude generated files from analysis
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options
