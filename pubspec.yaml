@@ -1,10 +1,10 @@
 name: shared_preferences_listener
 description: "A powerful Flutter plugin that extends SharedPreferences with reactive capabilities, allowing you to listen for changes in preference values across your app. Perfect for state management, settings synchronization, and real-time preference updates."
-version: 0.0.2
+version: 0.0.4
 homepage: https://github.com/sunday-team/shared_preferences_listener.git
 
 environment:
-  sdk: ^3.7.0-209.1.beta
+  sdk: '>=3.5.0 <4.0.0'
   flutter: '>=3.3.0'
 
 dependencies:
@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
   plugin_platform_interface: ^2.0.2
   shared_preferences: ^2.3.5
+  sunday_core: ^0.0.6
 
 dev_dependencies:
   flutter_test:

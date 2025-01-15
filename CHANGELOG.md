@@ -1,3 +1,13 @@
+## 0.0.4
+
+### Added
+- Extensive documentation for all methods and classes
+
+## 0.0.3
+
+### Added
+- All the code to a not pre-release version
+
 ## 0.0.2
 
 ### Added
