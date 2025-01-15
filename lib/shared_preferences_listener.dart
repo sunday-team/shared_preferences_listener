@@ -2,41 +2,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 
-// Example usage:
-/*
-void main() async {
-  // Initialize the listener
-  final prefs = SharedPreferencesListener();
-
-  // Add a listener for a specific key
-  prefs.listenKey('api-key', (value) {
-    print('API key changed to: $value'); 
-  });
-
-  // Write some values
-  await prefs.write('api-key', 'sk-1234567890');  // Prints: API key changed to: sk-1234567890
-  await prefs.write('model', 'gpt-4');
-  await prefs.write('temperature', 0.7);
-  await prefs.write('stream', true);
-
-  // Read values
-  String? apiKey = prefs.read('api-key');     // Returns 'sk-1234567890'
-  String? model = prefs.read('model');        // Returns 'gpt-4'
-  double? temp = prefs.read('temperature');   // Returns 0.7
-  bool? isStream = prefs.read('stream');      // Returns true
-
-  // Remove a value
-  await prefs.remove('api-key');  // Prints: API key changed to: null
-
-  // Clean up when done
-  prefs.dispose();
-}
-*/
-
 /// A singleton class that listens to changes in shared preferences.
 class SharedPreferencesListener {
-  static final SharedPreferencesListener _instance =
-      SharedPreferencesListener._internal();
+  static final SharedPreferencesListener _instance = SharedPreferencesListener._internal();
   
   /// Factory constructor to return the singleton instance.
   factory SharedPreferencesListener() => _instance;
@@ -44,7 +12,7 @@ class SharedPreferencesListener {
   SharedPreferencesListener._internal();
 
   SharedPreferences? _prefs;
-  final Map<String, List<void Function(dynamic)>> _listeners = {};
+  final Map<String, List<StreamController<dynamic>>> _controllers = {};
   bool _isInitialized = false;
 
   /// Initializes the shared preferences instance.
@@ -55,18 +23,68 @@ class SharedPreferencesListener {
     }
   }
 
-  /// Adds a listener for a specific key.
-  void listenKey(String key, void Function(dynamic) listener,
-      {bool returnCurrentValue = true}) {
-    _listeners.putIfAbsent(key, () => []).add(listener);
-    // Notify the listener with the current value if requested
-    if (returnCurrentValue) {
-      listener(read(key));
+  /// Adds a listener for a specific key and returns a StreamSubscription.
+  StreamSubscription<T> addListener<T>(String key, void Function(T) onData) {
+    final controller = StreamController<T>.broadcast();
+    _controllers.putIfAbsent(key, () => []).add(controller);
+    
+    // Send current value if available
+    final currentValue = read(key);
+    if (currentValue != null) {
+      controller.add(currentValue as T);
     }
+    
+    return controller.stream.listen(onData);
+  }
+
+  /// Adds a typed listener for objects that can be converted from/to JSON.
+  StreamSubscription<T?> addObjectListener<T>(
+    String key,
+    void Function(T?) onData,
+    {T Function(Map<String, dynamic>)? fromJson}
+  ) {
+    final controller = StreamController<T?>.broadcast();
+    _controllers.putIfAbsent(key, () => []).add(controller);
+
+    // Send current value if available
+    final currentValue = read(key);
+    if (currentValue != null && fromJson != null) {
+      try {
+        final obj = fromJson(currentValue as Map<String, dynamic>);
+        controller.add(obj);
+      } catch (e) {
+        print('Error converting object: $e');
+      }
+    }
+
+    return controller.stream.listen(onData);
+  }
+
+  /// Removes all listeners for a specific key.
+  void removeAllListeners(String key) {
+    final controllers = _controllers[key];
+    if (controllers != null) {
+      for (var controller in controllers) {
+        controller.close();
+      }
+      _controllers.remove(key);
+    }
+  }
+
+  /// Sets a value with type safety using a Preference object.
+  Future<void> setValue<T>(Preference<T> preference, T value) async {
+    await write(preference.key, value);
+  }
+
+  /// Gets a value with type safety using a Preference object.
+  T? getValue<T>(Preference<T> preference) {
+    return read(preference.key) as T?;
   }
 
   /// Writes a value to shared preferences.
   Future<void> write<T>(String key, T value) async {
+    if (!_isInitialized) await init();
+    
     if (value is String) {
       await _prefs?.setString(key, value);
     } else if (value is int) {
@@ -76,23 +94,22 @@ class SharedPreferencesListener {
     } else if (value is bool) {
       await _prefs?.setBool(key, value);
     } else if (value is List || value is Map) {
-      // Convert complex types to JSON string
       await _prefs?.setString(key, json.encode(value));
     } else {
-      throw Exception('Unsupported type: ${value.runtimeType}');
+      throw SharedPreferencesException('Unsupported type: ${value.runtimeType}');
     }
-    _notifyListeners(key, value); // Notify listeners of the change
+    _notifyListeners(key, value);
   }
 
   /// Reads a value from shared preferences.
   dynamic read(String key) {
+    if (!_isInitialized) init();
+    
     final value = _prefs?.get(key);
     if (value is String) {
       try {
-        // Attempt to decode JSON string
         return json.decode(value);
       } catch (e) {
-        // If not JSON, return original string
         return value;
       }
     }
@@ -101,31 +118,85 @@ class SharedPreferencesListener {
 
   /// Removes a value from shared preferences.
   Future<void> remove(String key) async {
+    if (!_isInitialized) await init();
     await _prefs?.remove(key);
-    _notifyListeners(key, null); // Notify listeners of the removal
+    _notifyListeners(key, null);
+  }
+
+  /// Performs multiple operations in a batch.
+  Future<void> batch(void Function(SharedPreferencesListener) operations) async {
+    if (!_isInitialized) await init();
+    operations(this);
   }
 
   /// Notifies listeners of changes to a specific key.
   void _notifyListeners(String key, dynamic value) {
+    final controllers = _controllers[key];
+    if (controllers == null) return;
+
     if (value is String) {
       try {
-        // Try to decode JSON before notifying listeners
         final decoded = json.decode(value);
-        for (var listener in _listeners[key] ?? []) {
-          listener(decoded);
+        for (var controller in controllers) {
+          controller.add(decoded);
         }
         return;
-      } catch (_) {
-        // If not JSON, continue with original value
-      }
+      } catch (_) {}
     }
-    for (var listener in _listeners[key] ?? []) {
-      listener(value);
+    
+    for (var controller in controllers) {
+      controller.add(value);
     }
   }
 
-  /// Disposes of the listener and clears all listeners.
+  /// Disposes of all controllers and clears listeners.
   void dispose() {
-    _listeners.clear(); // Clear listeners when done
+    for (var controllers in _controllers.values) {
+      for (var controller in controllers) {
+        controller.close();
+      }
+    }
+    _controllers.clear();
   }
+}
+
+/// Base class for type-safe preferences
+abstract class Preference<T> {
+  final String key;
+  final T defaultValue;
+
+  const Preference(this.key, {required this.defaultValue});
+}
+
+/// String preference with type safety
+class StringPreference extends Preference<String> {
+  const StringPreference(String key, {required String defaultValue}) 
+    : super(key, defaultValue: defaultValue);
+}
+
+/// Int preference with type safety
+class IntPreference extends Preference<int> {
+  const IntPreference(String key, {required int defaultValue})
+    : super(key, defaultValue: defaultValue);
+}
+
+/// Double preference with type safety
+class DoublePreference extends Preference<double> {
+  const DoublePreference(String key, {required double defaultValue})
+    : super(key, defaultValue: defaultValue);
+}
+
+/// Bool preference with type safety
+class BoolPreference extends Preference<bool> {
+  const BoolPreference(String key, {required bool defaultValue})
+    : super(key, defaultValue: defaultValue);
+}
+
+/// Custom exception for SharedPreferences operations
+class SharedPreferencesException implements Exception {
+  final String message;
+  SharedPreferencesException(this.message);
+  
+  @override
+  String toString() => 'SharedPreferencesException: $message';
 }

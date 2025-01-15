@@ -1,3 +1,13 @@
+## 0.0.2
+
+### Added
+- Batch operations support via `batch()` method
+- Custom object support with JSON serialization
+- Error handling with `SharedPreferencesException`
+- Memory management improvements with `dispose()` method
+- Automatic value change notifications
+- Support for multiple listeners per key
+
 ## 0.0.1
 
 Initial release of shared_preferences_listener plugin.
