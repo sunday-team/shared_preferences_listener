@@ -1,3 +1,9 @@
+## 0.0.5
+
+### Added
+- Added new function `prefs.listenKey()`
+- Enhanced documentation for better understanding
+
 ## 0.0.4
 
 ### Added

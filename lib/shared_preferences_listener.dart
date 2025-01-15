@@ -209,6 +209,25 @@ class SharedPreferencesListener {
     }
     _controllers.clear();
   }
+
+  /// Listens for changes to a specific key and returns a stream of values.
+  /// 
+  /// - Parameters:
+  ///   - key: The key to listen for changes.
+  /// 
+  /// - Returns: A [Stream] of values associated with the key.
+  Stream<dynamic> listenKey(String key) {
+    final controller = StreamController<dynamic>.broadcast();
+    _controllers.putIfAbsent(key, () => []).add(controller);
+    
+    // Send current value if available
+    final currentValue = read(key);
+    if (currentValue != null) {
+      controller.add(currentValue);
+    }
+    
+    return controller.stream;
+  }
 }
 
 /// Base class for type-safe preferences.
